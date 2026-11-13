@@ -1,7 +1,7 @@
+
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Drawing2D;
+using System.Text.RegularExpressions;
 
 namespace Recording
 {
@@ -16,7 +16,7 @@ namespace Recording
             new Dictionary<string, string[]>
         {
             {
-                "password",
+                "passwords",
                 new string[]
                 {
                     "Use a long, unique password for every account.",
@@ -34,7 +34,7 @@ namespace Recording
                 }
             },
             {
-                "browsing",
+                "safe browsing",
                 new string[]
                 {
                     "Avoid suspicious websites and downloads.",
@@ -71,7 +71,6 @@ namespace Recording
             }
         };
 
-        // Constructor used by MainForm.
         public Chat(string userName)
         {
             name = string.IsNullOrWhiteSpace(userName)
@@ -79,7 +78,6 @@ namespace Recording
                 : userName.Trim();
         }
 
-        // The GUI calls this method when the user sends a message.
         public string GetResponse(string question)
         {
             if (string.IsNullOrWhiteSpace(question))
@@ -87,20 +85,29 @@ namespace Recording
                 return "Please type a question so I can help you.";
             }
 
-            question = question.Trim().ToLowerInvariant();
+            // Convert message to lowercase and remove punctuation.
+            question = Regex.Replace(
+                question.Trim().ToLowerInvariant(),
+                @"[^\w\s]",
+                " ");
 
-            // --- ADDED: Greeting handlers ---
-            if (question == "hello" || question == "hi" || question == "hey")
+            question = Regex.Replace(question, @"\s+", " ").Trim();
+
+            // Greetings - check whole words instead of substrings.
+            if (IsGreeting(question))
             {
-                return "Hello! How are you doing today? Ready to learn about staying safe online?";
+                return "Hello, " + name +
+                    "! Welcome back. What would you like to learn about today?";
             }
 
+            // Ask how the bot is doing.
             if (question.Contains("how are you"))
             {
-                return "I'm doing great, thank you for asking! How are you doing? I'm ready to help you with cybersecurity anytime.";
+                return "I'm doing great, thank you for asking! " +
+                    "How can I help you with cybersecurity today?";
             }
 
-            // Remember a new name.
+            // Remember the user's name.
             if (question.StartsWith("my name is "))
             {
                 string newName = question.Substring(11).Trim();
@@ -108,145 +115,243 @@ namespace Recording
                 if (newName.Length > 0)
                 {
                     name = newName;
-                    return "Nice to meet you, " + name;
+
+                    return "Nice to meet you, " + name +
+                        "! I'll use your name during our conversation.";
                 }
 
-                return "Please tell me your name after 'my name is'.";
+                return "Please tell me your name after saying my name is.";
             }
 
-            // Recognise emotions and offer support.
-            if (question.Contains("worried") ||
-                question.Contains("scared") ||
-                question.Contains("afraid"))
+            // Goodbye.
+            if (ContainsAny(question,
+                "goodbye", "bye", "see you later"))
             {
-                string worriedTopic = FindTopic(question);
+                return "Goodbye, " + name +
+                    "! Remember to stay safe online.";
+            }
 
-                if (worriedTopic != "")
+            // Thank you.
+            if (ContainsAny(question, "thank you", "thanks"))
+            {
+                return "You're welcome, " + name +
+                    "! I'm happy to help you learn about cybersecurity.";
+            }
+
+            // Help command.
+            if (ContainsAny(question, "help", "what can you do"))
+            {
+                return "I can help you learn about passwords, phishing, " +
+                    "safe browsing, privacy, scams and malware. " +
+                    "You can also ask for another tip or request more information.";
+            }
+
+            // Identify the topic before checking emotions.
+            string foundTopic = FindTopic(question);
+
+            // Recognise worried emotions.
+            if (ContainsAny(question,
+                "worried", "scared", "afraid", "anxious", "nervous"))
+            {
+                if (foundTopic != "")
                 {
-                    currentTopic = worriedTopic;
+                    currentTopic = foundTopic;
 
                     return "It's understandable to feel concerned about " +
-                           worriedTopic + ". Here's something you can do: " +
-                           GetTip(worriedTopic);
+                        foundTopic + ". Let's take it one step at a time. " +
+                        GetTip(foundTopic);
                 }
 
                 if (currentTopic != "")
                 {
                     return "I understand that this can feel worrying. " +
-                           "Let's take it one step at a time. " +
-                           GetTip(currentTopic);
+                        "Let's work through it together. " +
+                        GetTip(currentTopic);
                 }
 
                 return "I understand that online safety can feel worrying. " +
-                       "We can take it one step at a time. " +
-                       "You can ask me about passwords, phishing, privacy or scams.";
+                    "You can ask me about passwords, phishing, privacy or scams.";
             }
 
-            if (question.Contains("frustrated") ||
-                question.Contains("annoyed"))
+            // Recognise frustration.
+            if (ContainsAny(question,
+                "frustrated", "annoyed", "confused", "difficult"))
             {
+                if (foundTopic != "")
+                {
+                    currentTopic = foundTopic;
+                }
+
+                if (currentTopic != "")
+                {
+                    return "I understand that " + currentTopic +
+                        " can seem confusing. Let's simplify it. " +
+                        GetTip(currentTopic);
+                }
+
                 return "I understand this can be frustrating. " +
-                       "Take your time, and let's work through it one step at a time.";
+                    "Take your time. We can work through it one step at a time.";
             }
 
-            if (question.Contains("curious") ||
-                question.Contains("interested"))
+            // Recognise curiosity.
+            if (ContainsAny(question,
+                "curious", "interested", "excited"))
             {
-                return "It's great that you're curious! " +
-                       "Ask me about any cybersecurity topic, and let's learn together.";
+                if (foundTopic != "")
+                {
+                    currentTopic = foundTopic;
+
+                    return "It's great that you're interested in " +
+                        foundTopic + "! Here's a tip: " + GetTip(foundTopic);
+                }
+
+                return "It's great that you're interested in learning! " +
+                    "Which cybersecurity topic would you like to explore?";
             }
 
-            // Follow-up questions use the last topic.
-            if (question.Contains("another tip") ||
-                question.Contains("more tips") ||
-                question.Contains("give me another"))
+            // Follow-up: another tip.
+            if (ContainsAny(question,
+                "another tip", "more tips", "give me another",
+                "different tip", "one more tip"))
             {
                 if (currentTopic != "")
                 {
                     return "Here's another tip about " + currentTopic +
-                           ": " + GetTip(currentTopic);
+                        ": " + GetTip(currentTopic);
                 }
 
-                return "Choose a topic first: passwords, phishing, browsing, " +
-                       "privacy, scams or malware.";
+                return "Choose a topic first: passwords, phishing, " +
+                    "safe browsing, privacy, scams or malware.";
             }
 
-            if (question.Contains("explain more") ||
-                question.Contains("tell me more") ||
-                question.Contains("more information"))
+            // Follow-up: explain more.
+            if (ContainsAny(question,
+                "explain more", "tell me more", "more information",
+                "elaborate", "explain further"))
             {
                 if (currentTopic != "")
                 {
-                    return "Let's explore " + currentTopic + " a little more. " +
-                           GetTip(currentTopic);
+                    return "Let's explore " + currentTopic +
+                        " a little more. " + GetTip(currentTopic);
                 }
 
-                return "Which topic would you like to explore? " +
-                       "Try passwords, phishing, browsing, privacy, scams or malware.";
+                return "Which topic would you like me to explain? " +
+                    "Try passwords, phishing, safe browsing, privacy, scams or malware.";
             }
 
-            // General questions.
-            if (question.Contains("your purpose") ||
-                question.Contains("what do you do") ||
-                question.Contains("who are you"))
+            // Purpose and identity.
+            if (ContainsAny(question,
+                "your purpose", "what do you do",
+                "who are you", "your name"))
             {
                 return "I'm your Cybersecurity Awareness Bot! " +
-                       "I'm here to help you learn how to stay safe online.";
+                    "My purpose is to help you understand online risks " +
+                    "and learn how to protect yourself.";
             }
 
-            if (question.Contains("what is cybersecurity") ||
-                question.Contains("define cybersecurity"))
+            // Definition of cybersecurity.
+            if (ContainsAny(question,
+                "what is cybersecurity", "define cybersecurity",
+                "meaning of cybersecurity"))
             {
                 return "Cybersecurity means protecting devices, networks " +
-                       "and information from digital attacks.";
+                    "and information from digital attacks, damage or unauthorised access.";
             }
 
-            // Identify a cybersecurity topic.
-            string foundTopic = FindTopic(question);
-
+            // Respond to recognised cybersecurity topics.
             if (foundTopic != "")
             {
                 currentTopic = foundTopic;
-                return "Let's talk about " + currentTopic + ": " +
-                       GetTip(currentTopic);
+
+                return "Let's talk about " + foundTopic + ": " +
+                    GetTip(foundTopic);
             }
 
-            // Handle unknown messages.
-            return "I'm not sure I understand that yet. " +
-                   "Try asking me about passwords, phishing, browsing, " +
-                   "privacy, scams or malware.";
+            // Unknown messages.
+            return "I'm not sure I understand that yet, " + name + ". " +
+                "Try asking me about passwords, phishing, safe browsing, " +
+                "privacy, scams or malware.";
         }
 
+        // Check greetings without matching parts of other words.
+        private bool IsGreeting(string message)
+        {
+            return message == "hi" ||
+                   message == "hello" ||
+                   message == "hey" ||
+                   message.StartsWith("hi ") ||
+                   message.StartsWith("hello ") ||
+                   message.StartsWith("hey ") ||
+                   message.StartsWith("good morning") ||
+                   message.StartsWith("good afternoon") ||
+                   message.StartsWith("good evening");
+        }
+
+        // Check whether a message contains any supplied phrases.
+        private bool ContainsAny(string message, params string[] phrases)
+        {
+            foreach (string phrase in phrases)
+            {
+                if (Regex.IsMatch(
+                    message,
+                    @"(?<!\w)" + Regex.Escape(phrase) + @"(?!\w)"))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Identify the topic from different keywords and phrases.
         private string FindTopic(string question)
         {
-            if (question.Contains("password") ||
-                question.Contains("passcode"))
-                return "password";
+            if (ContainsAny(question,
+                "password", "passcode", "login security",
+                "strong password", "account password"))
+            {
+                return "passwords";
+            }
 
-            if (question.Contains("phishing") ||
-                question.Contains("suspicious email"))
+            if (ContainsAny(question,
+                "phishing", "suspicious email", "fake email",
+                "email scam", "fake message"))
+            {
                 return "phishing";
+            }
 
-            if (question.Contains("browsing") ||
-                question.Contains("website") ||
-                question.Contains("browser"))
-                return "browsing";
+            if (ContainsAny(question,
+                "browsing", "website", "browser",
+                "online shopping", "safe website"))
+            {
+                return "safe browsing";
+            }
 
-            if (question.Contains("privacy") ||
-                question.Contains("personal information"))
+            if (ContainsAny(question,
+                "privacy", "personal information",
+                "private information", "data protection"))
+            {
                 return "privacy";
+            }
 
-            if (question.Contains("scam") ||
-                question.Contains("fraud"))
+            if (ContainsAny(question,
+                "scam", "fraud", "fake prize",
+                "online fraud", "scammers"))
+            {
                 return "scams";
+            }
 
-            if (question.Contains("malware") ||
-                question.Contains("virus"))
+            if (ContainsAny(question,
+                "malware", "virus", "computer infection",
+                "malicious software"))
+            {
                 return "malware";
+            }
 
             return "";
         }
 
+        // Return a random tip for the selected topic.
         private string GetTip(string topic)
         {
             if (!tips.ContainsKey(topic))
@@ -255,6 +360,7 @@ namespace Recording
             }
 
             string[] topicTips = tips[topic];
+
             int number = random.Next(topicTips.Length);
 
             return topicTips[number];
