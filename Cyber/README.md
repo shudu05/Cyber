@@ -1,82 +1,159 @@
-﻿# 🛡️ Cybersecurity Awareness Bot
+# 🛡️ Cybersecurity Awareness Bot
 
-## Project Description
+## 1. Project Description
 
-The Cybersecurity Awareness Bot is a C# Windows Forms desktop application that teaches users about basic cybersecurity and online safety. It provides information and tips about passwords, phishing, safe browsing, privacy, online scams, and malware.
+The Cybersecurity Awareness Bot is a C# Windows Forms application designed to educate users about cybersecurity and online safety.
 
-The application uses a stylized, high-contrast dark cyberpunk graphical user interface (GUI) to make learning about cybersecurity simple, modern, and interactive.
+It provides cybersecurity tips and information about passwords, phishing, safe browsing, privacy, scams and malware. It also includes task management, reminders, an activity log and an interactive cybersecurity quiz.
 
-## Project Features
+## 2. Features
 
-- **Voice Greeting:** Plays a recorded WAV greeting when the application starts using native audio streams.
-- **Dynamic Content Layout:** Built entirely programmatically inside a single form instance, providing optimized scaling, caret tracking, and a cohesive dark UI layout without designer file overhead.
-- **Keyword Recognition:** Automatically parses text streams to match cybersecurity topics such as passwords, phishing, and malware.
-- **Random Responses:** Utilizes specialized random index arrays to select different tips from a predefined collection so the bot does not always give the same response.
-- **Conversation Flow:** Seamlessly tracks dialogue history to handle follow-up questions such as "another tip" and "explain more".
-- **Memory & Metrics Tracking:** Passive state variables register user identity and dynamically calculate the user's favorite security topic based on chat history to personalize greetings on consecutive loops.
-- **Sentiment Detection:** Detects simple user expressions such as "worried", "curious", and "frustrated" to adjust conversational responses empathetically.
-- **Delegates Implementation:** Leverages explicit object delegate callbacks to pipe, sanitize, and format chatbot message outputs securely before UI rendering.
-- **Error Handling & Edge Cases:** Safely intercepts empty text entries, unhandled inputs, or terminal flags (like "exit" and "quit") without crashing or interrupting system processing.
+### Chatbot
+- Recognises cybersecurity keywords and questions.
+- Provides random cybersecurity tips.
+- Detects emotions such as worried, curious and frustrated.
+- Handles follow-up questions.
+- Remembers the user's name and current topic.
+- Plays a voice greeting when the application starts.
 
-## Classes Used
+### Task Management
+- Add, view, complete and delete tasks.
+- Add task descriptions.
+- Set reminders for future dates and times.
+- Receive reminder notifications.
 
-### 1. Program Class
-The `Program` class serves as the main entry runtime thread for the application. It initializes base application configurations and opens the primary `Form1` execution window loop.
+### Cybersecurity Quiz
+- 10 multiple-choice questions.
+- Four answer options per question.
+- Feedback and explanations.
+- Score calculation and replay option.
 
-### 2. Form1 Class (UI & Layout Layer)
-The `Form1` class programmatically designs and maintains the entire Graphical User Interface from scratch. It builds the panels, rich textbox containers, input textboxes, action button styling, and event listeners while initializing the Task 1 background audio components.
+### Activity Log
+- Records important application activities.
+- Tracks task and reminder actions.
+- Displays the latest 10 activities.
+- Supports viewing up to 20 activities.
 
-### 3. Chat Class (Core Engine Backend)
-The `Chat` class acts as the primary data processing and conversation coordinator backend. It manages key token matches, generic collection schemas, sentiment conditions, delegate initializations, metric logging, and randomized index tip retrieval.
+### Database
+- MySQL integration.
+- Stores tasks, reminders and activity records.
+- Retrieves saved information.
+- Maintains data after the application closes.
 
-### 4. Logo Class
-The `Logo` class provides structured title and subtitle strings to maintain a neat typographic presentation across the header layers.
+## 3. Classes Used
 
-## Technologies Used
+| Class | Purpose |
+|---|---|
+| Program | Starts the application. |
+| Form1 | Manages the main GUI and application interactions. |
+| Chat | Handles chatbot responses and NLP simulation. |
+| Logo | Displays the application title and subtitle. |
+| DatabaseManager | Manages MySQL operations. |
+| QuizForm | Manages the cybersecurity quiz. |
 
-- C# (Object-Oriented Programming)
-- .NET Framework / .NET SDK
-- Windows Forms (WinForms API)
-- Visual Studio IDE
-- WAV Audio Processing
+## 4. Technologies Used
 
-## Project Files
+- C#
+- Windows Forms
+- .NET
+- Visual Studio 2022
+- MySQL Server
+- MySQL Workbench
+- MySql.Data (NuGet)
+- Regular Expressions
 
-- `Program.cs` — Application initialization vector.
-- `Form1.cs` — Dynamic presentation container layout and user interface.
-- `Chat.cs` — Algorithmic conversation manager, delegates, collections, and state engines.
-- `Logo.cs` — Visual typography configuration resource class.
-- `voice/CyberSecurityAwarenessBot.wav` — Audio resource asset containing the voice greeting.
-- `README.md` — Complete documentation outlining project metrics and architecture specifications.
+## 5. Database Setup
 
-## How to Run the Project
+**Database name:** `CybersecurityBotDB`
 
-1. Open the project folder (`Cyber.sln`) inside **Visual Studio**.
-2. Ensure the workload for **.NET Desktop Development** is installed.
-3. Check that the audio file is correctly located inside the compiled `voice` directory.
-4. Clean and Rebuild the solution from the top **Build** toolbar menu.
-5. Press **F5** (or click the green **Start** button) to run the application on Windows.
-6. Type casual greetings or explicit cybersecurity inquiries into the dark interface terminal.
-7. Enter `exit` or `quit` to end the session or click the close icon.
+The application uses two tables:
 
-## Example Questions
+- `Tasks` – stores tasks, descriptions, reminders and completion status.
+- `ActivityLog` – stores recorded application activities and dates.
 
-- Hello / Hi / Hey
-- How are you?
-- What do you remember about me?
-- What is your purpose?
+Run the following SQL commands in MySQL Workbench:
+
+```sql
+CREATE DATABASE IF NOT EXISTS CybersecurityBotDB;
+
+USE CybersecurityBotDB;
+
+CREATE TABLE IF NOT EXISTS Tasks
+(
+    TaskId INT AUTO_INCREMENT PRIMARY KEY,
+    Title VARCHAR(100) NOT NULL,
+    Description TEXT,
+    ReminderDate DATETIME NULL,
+    IsCompleted BOOLEAN DEFAULT FALSE,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ReminderNotified BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS ActivityLog
+(
+    ActivityId INT AUTO_INCREMENT PRIMARY KEY,
+    ActivityDescription VARCHAR(255) NOT NULL,
+    ActivityDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## 6. Chatbot Commands
+
+| Command | Purpose |
+|---|---|
+| `add task: Study programming` | Adds a task. |
+| `show tasks` | Displays tasks. |
+| `complete task: 1` | Completes a task. |
+| `delete task: 1` | Deletes a task. |
+| `add reminder: 1 \| 2026-11-15 14:30` | Sets a reminder. |
+| `show activity` | Displays recent activities. |
+| `show more activity` | Displays up to 20 activities. |
+| `exit` / `quit` | Exits the chatbot. |
+
+Reminder format: `yyyy-MM-dd HH:mm`
+
+## 7. Project Files
+
+- `Program.cs`
+- `Form1.cs`
+- `Chat.cs`
+- `Logo.cs`
+- `DatabaseManager.cs`
+- `QuizForm.cs`
+- `voice/CyberSecurityAwarenessBot.wav`
+- `README.md`
+
+## 8. How to Run
+
+1. Install Visual Studio 2022 and the .NET Desktop Development workload.
+2. Install and configure MySQL Server.
+3. Create the database and tables using the SQL commands above.
+4. Open `Cyber.sln` in Visual Studio.
+5. Ensure the database connection is configured correctly.
+6. Restore the required NuGet packages.
+7. Build the solution.
+8. Press **F5** to run the application.
+
+**Note:** The application must remain open for reminder notifications to be checked and displayed.
+
+## 9. Example Chatbot Questions
+
 - What is cybersecurity?
 - How can I protect my password?
 - What is phishing?
 - How can I browse safely?
 - How can I protect my privacy?
 - I'm worried about online scams.
-- I'm curious about malware.
 - Give me another tip.
 - Explain more.
 
-## Purpose of the Project
+## 10. Purpose of the Project
 
-The purpose of this project is to promote digital safety awareness by introducing simple, actionable strategies to secure accounts, data, and communication lines. 
+The project aims to promote cybersecurity awareness while demonstrating practical programming skills, including object-oriented programming, GUI development, database integration, CRUD operations, event handling, input validation and basic NLP simulation.
 
-Architecturally, the project serves as a showcase for core advanced software principles including Object-Oriented Design (OOD), generic collection frameworks, runtime data memory state logging, programmatic graphical rendering, sentiment evaluation, and delegate function patterns.
+---
+
+**Language:** C#  
+**Application:** Windows Forms  
+**Database:** MySQL  
+**IDE:** Visual Studio 2022
