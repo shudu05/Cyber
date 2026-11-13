@@ -1,4 +1,5 @@
-﻿using Recording;
+
+using Recording;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -17,26 +18,99 @@ namespace Cyber
     public partial class Form1 : Form
     {
         private Chat chat;
+        private DatabaseManager database;
 
         private RichTextBox chatArea;
         private TextBox messageBox;
         private Button sendButton;
 
+        // Automatic reminder timer
+        private System.Windows.Forms.Timer reminderTimer;
+        private bool reminderErrorDisplayed = false;
+
         private Color backgroundColor = Color.FromArgb(22, 24, 42);
         private Color purpleColor = Color.FromArgb(125, 80, 255);
         private Color cyanColor = Color.FromArgb(50, 220, 230);
 
-        // 1. Keeps the parameterless constructor so your app launches cleanly
         public Form1()
         {
             InitializeComponent();
 
-            string userName = "User"; // Default fallback username
+            string userName = "User";
             chat = new Chat(userName);
+            database = new DatabaseManager();
 
             CreateWindow();
             ShowWelcomeMessage(userName);
             PlayVoiceGreeting();
+
+            TestDatabaseConnection();
+
+            // Start automatic reminder checking
+            StartReminderTimer();
+        }
+
+        private void TestDatabaseConnection()
+        {
+            string result = database.TestConnection();
+            AddMessage("DATABASE", result, cyanColor);
+        }
+
+        // Start the reminder timer
+        private void StartReminderTimer()
+        {
+            reminderTimer = new System.Windows.Forms.Timer();
+
+            reminderTimer.Interval = 30000;
+
+            reminderTimer.Tick += ReminderTimer_Tick;
+
+            reminderTimer.Start();
+
+            FormClosed += Form1_FormClosed;
+        }
+
+        // Check for reminders when the timer ticks
+        private void ReminderTimer_Tick(object sender, EventArgs e)
+        {
+            string reminders = database.GetDueReminders();
+
+            if (string.IsNullOrWhiteSpace(reminders))
+            {
+                return;
+            }
+
+            if (reminders.StartsWith(
+                "Error checking reminders:",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                if (!reminderErrorDisplayed)
+                {
+                    AddMessage("DATABASE", reminders, cyanColor);
+                    reminderErrorDisplayed = true;
+                }
+
+                return;
+            }
+
+            AddMessage("REMINDER", reminders, cyanColor);
+
+            MessageBox.Show(
+                this,
+                reminders,
+                "Cybersecurity Bot - Task Reminder",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        // Stop timer when the application closes
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            if (reminderTimer != null)
+            {
+                reminderTimer.Stop();
+                reminderTimer.Dispose();
+            }
         }
 
         private void CreateWindow()
@@ -72,6 +146,30 @@ namespace Cyber
             subtitle.Location = new Point(23, 55);
             subtitle.AutoSize = true;
             header.Controls.Add(subtitle);
+
+            // Cybersecurity Quiz button
+            Button quizButton = new Button();
+            quizButton.Text = "Take Quiz";
+            quizButton.Size = new Size(130, 40);
+            quizButton.Location = new Point(640, 27);
+            quizButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            quizButton.BackColor = cyanColor;
+            quizButton.ForeColor = backgroundColor;
+            quizButton.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            quizButton.FlatStyle = FlatStyle.Flat;
+            quizButton.FlatAppearance.BorderSize = 0;
+
+            quizButton.Click += (sender, e) =>
+            {
+                database.LogActivity("Opened the cybersecurity quiz.");
+
+                using (QuizForm quiz = new QuizForm())
+                {
+                    quiz.ShowDialog(this);
+                }
+            };
+
+            header.Controls.Add(quizButton);
 
             // Chat display
             chatArea = new RichTextBox();
@@ -109,7 +207,7 @@ namespace Cyber
             sendButton.Location = new Point(600, 14);
             sendButton.Size = new Size(150, 38);
             sendButton.Anchor = AnchorStyles.Right |
-                               AnchorStyles.Top;
+                                AnchorStyles.Top;
             sendButton.BackColor = cyanColor;
             sendButton.ForeColor = Color.FromArgb(22, 24, 42);
             sendButton.Font = new Font("Segoe UI", 10, FontStyle.Bold);
@@ -121,6 +219,7 @@ namespace Cyber
             messageBox.KeyDown += MessageBox_KeyDown;
 
             AcceptButton = sendButton;
+            chatArea.BringToFront();
         }
 
         private void ShowWelcomeMessage(string userName)
@@ -134,6 +233,11 @@ namespace Cyber
             AddMessage(
                 "BOT",
                 "You can also say 'another tip' or 'explain more'. Type 'exit' to close the bot.",
+                cyanColor);
+
+            AddMessage(
+                "BOT",
+                "Type 'show activity' to view your recent activities.",
                 cyanColor);
         }
 
@@ -164,6 +268,7 @@ namespace Cyber
             AddMessage("YOU", message, cyanColor);
             messageBox.Clear();
 
+            // Exit command
             if (message.Equals("exit", StringComparison.OrdinalIgnoreCase) ||
                 message.Equals("quit", StringComparison.OrdinalIgnoreCase))
             {
@@ -173,6 +278,158 @@ namespace Cyber
                 return;
             }
 
+            // Show latest 10 activities
+            if (message.Equals("show activity",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                string result = database.GetActivityLogs(10);
+
+                AddMessage("ACTIVITY LOG", result, cyanColor);
+
+                return;
+            }
+
+            // Show latest 20 activities
+            if (message.Equals("show more activity",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                string result = database.GetActivityLogs(20);
+
+                AddMessage("ACTIVITY LOG", result, cyanColor);
+
+                return;
+            }
+
+            // Add task command
+            if (message.StartsWith("add task:", StringComparison.OrdinalIgnoreCase))
+            {
+                string taskDetails = message.Substring(9).Trim();
+
+                string[] parts = taskDetails.Split('|');
+
+                string title = parts[0].Trim();
+
+                string description = "";
+
+                if (parts.Length > 1)
+                {
+                    description = parts[1].Trim();
+                }
+
+                if (title == "")
+                {
+                    AddMessage("BOT", "Please enter a task title.", cyanColor);
+                    return;
+                }
+
+                string result = database.AddTask(title, description);
+
+                AddMessage("BOT", result, cyanColor);
+
+                return;
+            }
+
+            // Show saved tasks command
+            if (message.Equals("show tasks", StringComparison.OrdinalIgnoreCase))
+            {
+                string result = database.GetTasks();
+
+                AddMessage("BOT", result, cyanColor);
+
+                return;
+            }
+
+            // Complete task command
+            if (message.StartsWith("complete task:", StringComparison.OrdinalIgnoreCase))
+            {
+                string taskIdText = message.Substring(14).Trim();
+
+                int taskId;
+
+                if (!int.TryParse(taskIdText, out taskId) || taskId <= 0)
+                {
+                    AddMessage("BOT", "Please enter a valid task ID. Example: complete task: 1", cyanColor);
+                    return;
+                }
+
+                string result = database.CompleteTask(taskId);
+
+                AddMessage("BOT", result, cyanColor);
+
+                return;
+            }
+
+            // Delete task command
+            if (message.StartsWith("delete task:", StringComparison.OrdinalIgnoreCase))
+            {
+                string taskIdText = message.Substring(12).Trim();
+
+                int taskId;
+
+                if (!int.TryParse(taskIdText, out taskId) || taskId <= 0)
+                {
+                    AddMessage("BOT", "Please enter a valid task ID. Example: delete task: 1", cyanColor);
+                    return;
+                }
+
+                string result = database.DeleteTask(taskId);
+
+                AddMessage("BOT", result, cyanColor);
+
+                return;
+            }
+
+            // Add reminder command
+            if (message.StartsWith("add reminder:", StringComparison.OrdinalIgnoreCase))
+            {
+                string reminderDetails = message.Substring(13).Trim();
+
+                string[] parts = reminderDetails.Split('|');
+
+                if (parts.Length < 2)
+                {
+                    AddMessage("BOT",
+                        "Please use this format: add reminder: TaskID | yyyy-MM-dd HH:mm",
+                        cyanColor);
+                    return;
+                }
+
+                int taskId;
+                DateTime reminderDate;
+
+                if (!int.TryParse(parts[0].Trim(), out taskId) || taskId <= 0)
+                {
+                    AddMessage("BOT", "Please enter a valid task ID.", cyanColor);
+                    return;
+                }
+
+                if (!DateTime.TryParseExact(
+                    parts[1].Trim(),
+                    "yyyy-MM-dd HH:mm",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None,
+                    out reminderDate))
+                {
+                    AddMessage("BOT",
+                        "Invalid date or time. Use yyyy-MM-dd HH:mm.",
+                        cyanColor);
+                    return;
+                }
+
+                if (reminderDate <= DateTime.Now)
+                {
+                    AddMessage("BOT", "Please enter a future date and time.", cyanColor);
+                    return;
+                }
+
+                string result = database.AddReminder(taskId, reminderDate);
+
+                AddMessage("BOT", result, cyanColor);
+
+                return;
+            }
+
+            // Normal chatbot response
             string response = chat.GetResponse(message);
             AddMessage("BOT", response, purpleColor);
         }
@@ -219,10 +476,11 @@ namespace Cyber
             }
         }
 
-        // 2. Preserved from your visual design template file to prevent designer errors
+        // Preserved designer event methods
         private void button2_Click(object sender, EventArgs e)
         {
         }
+
         private void button1_Click(object sender, EventArgs e)
         {
         }
